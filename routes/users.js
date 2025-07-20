@@ -4,13 +4,11 @@ import { verifyToken, requireAdmin } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// GET todos los usuarios (solo admins)
 router.get("/", verifyToken, requireAdmin, async (req, res) => {
   const users = await User.find().select("-password");
   res.json(users);
 });
 
-// PUT cambiar rol (solo admins)
 router.put("/:id/role", verifyToken, requireAdmin, async (req, res) => {
   try {
     const { role } = req.body;
@@ -31,7 +29,6 @@ router.put("/:id/role", verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
-// DELETE eliminar usuario (admin o el mismo usuario)
 router.delete("/:id", verifyToken, async (req, res) => {
   const requesterId = req.user.id;
   const requesterRole = req.user.role;

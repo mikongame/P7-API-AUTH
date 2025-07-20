@@ -5,20 +5,17 @@ import { verifyToken } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
 
-// GET todos los lugares (público)
 router.get("/", async (req, res) => {
   const places = await Place.find().populate("experiences");
   res.json(places);
 });
 
-// GET un lugar por ID (público)
 router.get("/:id", async (req, res) => {
   const place = await Place.findById(req.params.id).populate("experiences");
   if (!place) return res.status(404).json({ message: "Lugar no encontrado" });
   res.json(place);
 });
 
-// POST nuevo lugar (requiere token)
 router.post("/", verifyToken, async (req, res) => {
   try {
     const { title, description, location } = req.body;
@@ -36,7 +33,6 @@ router.post("/", verifyToken, async (req, res) => {
   }
 });
 
-// PUT editar lugar (requiere token)
 router.put("/:id", verifyToken, async (req, res) => {
   const { experiences, ...rest } = req.body;
   const updated = await Place.findByIdAndUpdate(req.params.id, rest, { new: true });
@@ -44,7 +40,6 @@ router.put("/:id", verifyToken, async (req, res) => {
   res.json(updated);
 });
 
-// DELETE eliminar lugar (requiere token)
 router.delete("/:id", verifyToken, async (req, res) => {
   await Place.findByIdAndDelete(req.params.id);
   res.json({ message: "Lugar eliminado" });

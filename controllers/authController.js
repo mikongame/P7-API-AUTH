@@ -3,7 +3,6 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
 
-// Función para generar token
 const generateToken = (user) => {
   return jwt.sign(
     { id: user._id, role: user.role },
@@ -12,7 +11,6 @@ const generateToken = (user) => {
   );
 };
 
-// Registro de usuario (solo rol "user")
 export const register = async (req, res) => {
   try {
     const { username, email, password } = req.body;
@@ -36,7 +34,6 @@ export const register = async (req, res) => {
   }
 };
 
-// Login de usuario
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;

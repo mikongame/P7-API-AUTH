@@ -26,7 +26,6 @@ const seed = async () => {
     await Place.deleteMany();
     await User.deleteMany();
 
-    // Crear admin por código (si no existe ya)
     let admin = await User.findOne({ role: "admin" });
 
     if (admin) {

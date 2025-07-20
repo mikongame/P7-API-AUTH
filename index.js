@@ -21,11 +21,9 @@ const io = new Server(server, {
   }
 });
 
-// Middlewares
 app.use(cors());
 app.use(express.json());
 
-// Conexión a MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("✅ Conectado a MongoDB Atlas"))
   .catch((err) => {
@@ -33,7 +31,6 @@ mongoose.connect(process.env.MONGO_URI)
     process.exit(1);
   });
 
-// Rutas
 import authRoutes from "./routes/auth.js";
 import userRoutes from "./routes/users.js";
 import placeRoutes from "./routes/places.js";
@@ -44,7 +41,6 @@ app.use("/users", userRoutes);
 app.use("/places", placeRoutes);
 app.use("/experiences", experienceRoutes);
 
-// WebSockets (opcional)
 io.on("connection", (socket) => {
   console.log("🔌 Usuario conectado");
 
@@ -58,7 +54,6 @@ io.on("connection", (socket) => {
   });
 });
 
-// Servidor
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 Servidor escuchando en http://localhost:${PORT}`);
