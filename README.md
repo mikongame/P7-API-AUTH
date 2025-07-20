@@ -1,89 +1,88 @@
-## Planify Backend – API REST + WebSockets
+EscapUrbis Backend – API REST AUTH con Roles
+Backend del proyecto EscapUrbis, una app que permite descubrir lugares urbanos en Barcelona a través de retos tipo escape room.
 
-Aplicación backend para organizar planes colaborativos (como *La Noche de la Hamburguesa*) mediante tareas asignadas, en tiempo real.
+Este backend implementa:
 
----
+Control de usuarios y roles (user y admin)
 
-### Stack Tecnológico
+CRUD completo de Places (lugares) y Experiences (retos)
 
-* **Node.js** + **Express**
-* **MongoDB Atlas** + Mongoose
-* **Socket.io** (WebSockets)
-* **dotenv**, **readline**
+Autenticación segura con JWT
 
----
+Relaciones entre modelos
 
-### Funcionalidades
+🔧 Stack Tecnológico
+Node.js + Express
 
-* CRUD completo para:
+MongoDB Atlas + Mongoose
 
-  * `Plan`: planificación colaborativa (con título y descripción)
-  * `Task`: tareas dentro de un plan (con estado `done`)
-* Relación entre modelos: un plan tiene un array de tareas
-* Comunicación en tiempo real vía Socket.io (`new-task`, `task-added`)
-* Script de semilla interactivo (`node seed.js`) con opción de datos predefinidos o personalizados
+JWT (jsonwebtoken) + bcrypt
 
----
+dotenv, cors, readline
 
-### Comandos útiles
+📁 Modelos
+Modelo	Descripción
+User	Usuarios registrados con rol (user o admin)
+Place	Lugar físico con title, description, location, y createdBy (referencia a User)
+Experience	Reto vinculado a un Place. Puede ser de tipo riddle, qr, gps, etc.
 
-```bash
+🔐 Roles y permisos
+Acción	user	admin
+Ver lugares y retos	✅	✅
+Crear lugar o experiencia	✅	✅
+Ver todos los usuarios	❌	✅
+Cambiar rol de usuario	❌	✅
+Eliminar usuario	✅ (solo el suyo)	✅ (cualquiera)
+
+🧪 Endpoints principales
+🔐 Autenticación (/auth)
+Método	Ruta	Descripción
+POST	/register	Registro como user
+POST	/login	Login y obtención de token
+
+👥 Usuarios (/users)
+Método	Ruta	Descripción
+GET	/users	Listar todos los usuarios (solo admin)
+PUT	/users/:id/role	Cambiar rol (solo admin)
+DELETE	/users/:id	Eliminar usuario (admin o uno mismo)
+
+📍 Lugares (/places)
+Método	Ruta	Descripción
+GET	/places	Ver todos los lugares
+POST	/places	Crear nuevo lugar (requiere token)
+PUT	/places/:id	Editar lugar (requiere token)
+DELETE	/places/:id	Eliminar lugar (requiere token)
+
+🧩 Experiencias (/experiences)
+Método	Ruta	Descripción
+GET	/experiences	Ver todas las experiencias
+POST	/experiences	Crear experiencia (requiere token)
+PUT	/experiences/:id	Editar experiencia
+DELETE	/experiences/:id	Eliminar experiencia
+
+⚙️ Comandos
+bash
+Copiar
+Editar
 npm install       # Instalar dependencias
-npm run dev       # Iniciar el servidor con nodemon
-node seed.js      # Poblar la base de datos con planes y tareas
-```
+npm run dev       # Iniciar servidor con nodemon
+node seed.js      # Semilla con admin + lugares y experiencias
+🌱 Semilla (seed.js)
+Permite insertar:
 
----
+Un usuario admin inicial (admin@escapurbis.com / admin123)
 
-### Endpoints REST principales
+Lugares y experiencias predeterminados
 
-| Método | Ruta         | Descripción                                |
-| ------ | ------------ | ------------------------------------------ |
-| GET    | `/plans`     | Obtener todos los planes (con tareas)      |
-| GET    | `/plans/:id` | Obtener un plan por ID                     |
-| POST   | `/plans`     | Crear un nuevo plan                        |
-| PUT    | `/plans/:id` | Editar un plan (sin eliminar tareas)       |
-| DELETE | `/plans/:id` | Eliminar un plan                           |
-| GET    | `/tasks`     | Listar todas las tareas                    |
-| POST   | `/tasks`     | Crear una nueva tarea y añadirla a un plan |
-| PUT    | `/tasks/:id` | Editar una tarea                           |
-| DELETE | `/tasks/:id` | Eliminar una tarea y quitarla del plan     |
+O bien crear tus propios datos desde consola
 
----
+🌍 Conexión MongoDB Atlas
+Acceso abierto (0.0.0.0/0)
 
-### Conexión a MongoDB Atlas
+.env incluido para evaluación (usuario temporal)
 
-* La base de datos tiene acceso público activado (`0.0.0.0/0`) para facilitar la corrección.
-* Se utiliza un usuario **temporal y limitado** con permisos de escritura.
-* La URI de conexión debe colocarse en el archivo `.env`.
+URI de conexión se lee desde process.env.MONGO_URI
 
-📄 `.env` incluido por requerimiento de evaluación
-
-Este repositorio contiene el archivo `.env` real para facilitar la corrección del proyecto.  
-El usuario de MongoDB Atlas utilizado es **temporal y con permisos limitados**, y será eliminado después de la entrega.
-
-> ⚠️ En entornos reales, nunca se deben subir credenciales sensibles a un repositorio público.
-
-
----
-
-### Semilla
-
-```bash
-node seed.js
-```
-
-Permite elegir entre:
-
-* Población automática con ejemplos clásicos (hamburguesas, cervezas, etc.)
-* Introducción personalizada de planes y tareas por consola
-
----
-
-### Inspiración pedagógica
-
-Este proyecto toma como referencia el ejercicio realizado en otro curso llamado **“La Noche de la Hamburguesa”**, donde se explora la relación entre modelos en MongoDB mediante una estructura narrativa: un plan (evento o noche especial) que contiene múltiples tareas organizativas.
-
-
-
-
+⚠️ Seguridad
+Este proyecto contiene credenciales solo para evaluación.
+No se deben subir .env a producción ni incluir contraseñas reales en repos públicos.
