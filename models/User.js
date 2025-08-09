@@ -15,31 +15,22 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
       lowercase: true,
-      trim: true
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, "Formato de email inválido"]
     },
     password: {
       type: String,
       required: true,
-      minlength: 6
+      minlength: 6,
+      select: false // 🔒 No devolver nunca la contraseña en queries por defecto
     },
     role: {
       type: String,
       enum: ["user", "admin"],
       default: "user"
     },
-
-    places: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Place"
-      }
-    ],
-    experiences: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Experience"
-      }
-    ]
+    places: [{ type: mongoose.Schema.Types.ObjectId, ref: "Place" }],
+    experiences: [{ type: mongoose.Schema.Types.ObjectId, ref: "Experience" }]
   },
   {
     timestamps: true,
@@ -48,13 +39,14 @@ const userSchema = new mongoose.Schema(
       transform: (_doc, ret) => {
         ret.id = ret._id.toString();
         delete ret._id;
-        delete ret.password;
+        delete ret.password; // redundante pero protege en casos de `.lean()`
         return ret;
       }
     }
   }
 );
 
+// Hash de contraseña solo si se modifica
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   try {
@@ -66,6 +58,7 @@ userSchema.pre("save", async function (next) {
   }
 });
 
+// Comparar contraseña
 userSchema.methods.comparePassword = function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };

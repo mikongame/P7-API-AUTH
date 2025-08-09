@@ -9,8 +9,8 @@ const placeSchema = new mongoose.Schema(
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
-      index: true
+      required: true
+      // ❌ Quitamos `index: true` para evitar duplicados
     },
 
     experiences: [
@@ -33,6 +33,7 @@ const placeSchema = new mongoose.Schema(
   }
 );
 
+// Índice compuesto o simple, pero definido solo una vez
 placeSchema.index({ createdBy: 1 });
 
 export default mongoose.model("Place", placeSchema);

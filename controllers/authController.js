@@ -1,20 +1,24 @@
-import User from "../models/User.js";
 import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
+import User from "../models/User.js";
 
-const { JWT_SECRET } = process.env;
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET no está definido en variables de entorno");
-}
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    // Validación en tiempo de ejecución, no al importar
+    throw new Error("JWT_SECRET no está definido en variables de entorno");
+  }
+  return secret;
+};
 
 const generateToken = (user) =>
-  jwt.sign({ id: user._id.toString(), role: user.role }, JWT_SECRET, {
+  jwt.sign({ id: user._id.toString(), role: user.role }, getJwtSecret(), {
     expiresIn: "7d",
   });
 
 export const register = async (req, res) => {
   try {
     const { username, email, password } = req.body ?? {};
-
     if (!username || !email || !password) {
       return res
         .status(400)
@@ -29,7 +33,7 @@ export const register = async (req, res) => {
         .status(400)
         .json({ message: "El nombre de usuario es demasiado corto" });
     }
-    if (password.length < 6) {
+    if (String(password).length < 6) {
       return res
         .status(400)
         .json({ message: "La contraseña debe tener al menos 6 caracteres" });
@@ -40,10 +44,15 @@ export const register = async (req, res) => {
       return res.status(409).json({ message: "El email ya está registrado" });
     }
 
+    // ✅ Opción A (recomendada): dejar que el modelo hashee en pre('save')
+    // const newUser = await User.create({ username: normUsername, email: normEmail, password, role: "user" });
+
+    // ✅ Opción B: hashear aquí (si tu modelo no lo hace)
+    const hashed = await bcrypt.hash(password, 10);
     const newUser = await User.create({
       username: normUsername,
       email: normEmail,
-      password,
+      password: hashed,
       role: "user",
     });
 
@@ -70,12 +79,22 @@ export const login = async (req, res) => {
 
     const normEmail = String(email).trim().toLowerCase();
     const user = await User.findOne({ email: normEmail });
-    if (!user)
-      return res.status(404).json({ message: "Usuario no encontrado" });
 
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch)
-      return res.status(401).json({ message: "Contraseña incorrecta" });
+    // 🔒 Unifica respuesta para no revelar si el email existe
+    const invalidMsg = "Credenciales inválidas";
+
+    if (!user) {
+      return res.status(401).json({ message: invalidMsg });
+    }
+
+    // Si tu modelo tiene user.comparePassword, úsalo:
+    // const isMatch = await user.comparePassword(password);
+    // Si no, compara con bcrypt:
+    const isMatch = await bcrypt.compare(String(password), user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ message: invalidMsg });
+    }
 
     const token = generateToken(user);
     return res.json({

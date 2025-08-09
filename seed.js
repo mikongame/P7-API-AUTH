@@ -13,19 +13,25 @@ const rl = readline.createInterface({
   output: process.stdout
 });
 
-const ask = (question) => new Promise((resolve) => rl.question(question, resolve));
+const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
 
 const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) {
+  console.error("❌ Falta MONGO_URI en .env");
+  process.exit(1);
+}
 
 const seed = async () => {
   try {
     await mongoose.connect(MONGO_URI);
     console.log("✅ Conectado a MongoDB para semilla");
 
+    // Limpieza
     await Experience.deleteMany();
     await Place.deleteMany();
     await User.deleteMany();
 
+    // Admin por defecto
     const adminPassword = await bcrypt.hash("admin123", 10);
     const admin = await User.create({
       username: "admin",
@@ -35,7 +41,9 @@ const seed = async () => {
     });
     console.log("👤 Usuario admin creado: admin@escapurbis.com / admin123");
 
-    const useDefault = (await ask("¿Usar datos predefinidos? (s/n): ")).trim().toLowerCase() === "s";
+    const useDefault = (await ask("¿Usar datos predefinidos? (s/n): "))
+      .trim()
+      .toLowerCase() === "s";
 
     if (useDefault) {
       const place1 = await Place.create({
@@ -56,21 +64,24 @@ const seed = async () => {
         text: "¿Qué año aparece grabado en la entrada?",
         type: "riddle",
         solution: "1937",
-        place: place1._id
+        place: place1._id,
+        createdBy: admin._id
       });
 
       const exp2 = await Experience.create({
         text: "Escanea el QR escondido junto al cañón oxidado.",
         type: "qr",
         solution: "escape-barcelona",
-        place: place1._id
+        place: place1._id,
+        createdBy: admin._id
       });
 
       const exp3 = await Experience.create({
         text: "Introduce la contraseña secreta del guía.",
         type: "riddle",
         solution: "Refugi307",
-        place: place2._id
+        place: place2._id,
+        createdBy: admin._id
       });
 
       await Place.findByIdAndUpdate(place1._id, {
@@ -83,24 +94,37 @@ const seed = async () => {
 
       console.log("🌱 Lugares y experiencias creados por defecto");
     } else {
-      const numPlaces = parseInt(await ask("¿Cuántos lugares quieres crear?: "), 10);
+      const numPlacesRaw = await ask("¿Cuántos lugares quieres crear?: ");
+      const numPlaces = Number.parseInt(numPlacesRaw, 10) || 0;
 
       for (let i = 0; i < numPlaces; i++) {
         const title = (await ask(`Título del lugar ${i + 1}: `)).trim();
         const description = (await ask(`Descripción: `)).trim();
         const location = (await ask(`Ubicación: `)).trim();
 
-        const place = await Place.create({ title, description, location, createdBy: admin._id });
-        const expIds = [];
+        const place = await Place.create({
+          title,
+          description,
+          location,
+          createdBy: admin._id
+        });
 
-        const numExperiences = parseInt(await ask(`¿Cuántas experiencias para "${title}"?: `), 10);
+        const expIds = [];
+        const numExpRaw = await ask(`¿Cuántas experiencias para "${title}"?: `);
+        const numExperiences = Number.parseInt(numExpRaw, 10) || 0;
 
         for (let j = 0; j < numExperiences; j++) {
           const text = (await ask(` - Enunciado de la experiencia ${j + 1}: `)).trim();
           const type = (await ask(` - Tipo (riddle/qr/gps/photo): `)).trim();
           const solution = (await ask(` - Solución: `)).trim();
 
-          const experience = await Experience.create({ text, type, solution, place: place._id });
+          const experience = await Experience.create({
+            text,
+            type,
+            solution,
+            place: place._id,
+            createdBy: admin._id
+          });
           expIds.push(experience._id);
         }
 
@@ -114,10 +138,12 @@ const seed = async () => {
 
     console.log("✅ Semilla finalizada");
     rl.close();
+    await mongoose.connection.close();
     process.exit(0);
   } catch (error) {
     console.error("❌ Error al ejecutar semilla:", error);
     rl.close();
+    await mongoose.connection.close();
     process.exit(1);
   }
 };

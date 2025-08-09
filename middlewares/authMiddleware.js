@@ -1,25 +1,29 @@
 import jwt from "jsonwebtoken";
 
-const { JWT_SECRET } = process.env;
-if (!JWT_SECRET) {
-  throw new Error("JWT_SECRET no está definido en variables de entorno");
-}
+// Obtiene el secreto en tiempo de ejecución (no al importar)
+const getSecret = () => {
+  const s = process.env.JWT_SECRET;
+  if (!s) throw new Error("JWT_SECRET no está definido en variables de entorno");
+  return s;
+};
 
 export const verifyToken = (req, res, next) => {
-  const authHeader = req.get("authorization"); // headers son case-insensitive
-
+  const authHeader = req.get("authorization"); // headers case-insensitive
   if (!authHeader) {
     return res.status(401).json({ message: "Token no proporcionado" });
   }
 
-  const [scheme, token] = authHeader.split(" ");
-  if (scheme !== "Bearer" || !token) {
+  // Acepta “Bearer   <token>” con espacios extra y case-insensitive
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  if (!match) {
     return res.status(401).json({ message: "Formato de autorización inválido" });
   }
+  const token = match[1].trim();
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = { id: decoded.id, role: decoded.role };
+    const decoded = jwt.verify(token, getSecret(), { algorithms: ["HS256"] });
+    // Aseguramos shape conocido
+    req.user = { id: String(decoded.id), role: decoded.role };
     return next();
   } catch (err) {
     if (err.name === "TokenExpiredError") {
@@ -43,4 +47,14 @@ export const authorizeRoles = (...roles) => (req, res, next) => {
     return res.status(403).json({ message: "No autorizado" });
   }
   return next();
+};
+
+// Extra útil: admin o el propio usuario (para /users/:id)
+export const requireSelfOrAdmin = (param = "id") => (req, res, next) => {
+  const targetId = req.params[param];
+  if (!req.user) return res.status(401).json({ message: "No autenticado" });
+  if (req.user.role === "admin" || String(req.user.id) === String(targetId)) {
+    return next();
+  }
+  return res.status(403).json({ message: "No autorizado" });
 };
