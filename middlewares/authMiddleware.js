@@ -1,30 +1,46 @@
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
-
+const { JWT_SECRET } = process.env;
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET no está definido en variables de entorno");
+}
 
 export const verifyToken = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+  const authHeader = req.get("authorization"); // headers son case-insensitive
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (!authHeader) {
     return res.status(401).json({ message: "Token no proporcionado" });
   }
 
-  const token = authHeader.split(" ")[1];
+  const [scheme, token] = authHeader.split(" ");
+  if (scheme !== "Bearer" || !token) {
+    return res.status(401).json({ message: "Formato de autorización inválido" });
+  }
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = { id: decoded.id, role: decoded.role };
-    next();
+    return next();
   } catch (err) {
-    return res.status(403).json({ message: "Token inválido o expirado" });
+    if (err.name === "TokenExpiredError") {
+      return res.status(401).json({ message: "Token expirado" });
+    }
+    return res.status(401).json({ message: "Token inválido" });
   }
 };
 
-
 export const requireAdmin = (req, res, next) => {
-  if (req.user.role !== "admin") {
-    return res.status(403).json({ message: "Solo los administradores pueden realizar esta acción" });
+  if (!req.user || req.user.role !== "admin") {
+    return res
+      .status(403)
+      .json({ message: "Solo los administradores pueden realizar esta acción" });
   }
-  next();
+  return next();
+};
+
+export const authorizeRoles = (...roles) => (req, res, next) => {
+  if (!req.user || !roles.includes(req.user.role)) {
+    return res.status(403).json({ message: "No autorizado" });
+  }
+  return next();
 };
