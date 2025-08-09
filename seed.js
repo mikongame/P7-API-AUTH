@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import readline from "readline";
-import bcrypt from "bcrypt";
 import Place from "./models/Place.js";
 import Experience from "./models/Experience.js";
 import User from "./models/User.js";
@@ -21,6 +20,8 @@ if (!MONGO_URI) {
   process.exit(1);
 }
 
+const ALLOWED_TYPES = ["riddle", "qr", "gps", "photo"];
+
 const seed = async () => {
   try {
     await mongoose.connect(MONGO_URI);
@@ -31,12 +32,11 @@ const seed = async () => {
     await Place.deleteMany();
     await User.deleteMany();
 
-    // Admin por defecto
-    const adminPassword = await bcrypt.hash("admin123", 10);
+    // Admin por defecto (contraseña en claro → la hashea el modelo en pre('save'))
     const admin = await User.create({
       username: "admin",
       email: "admin@escapurbis.com",
-      password: adminPassword,
+      password: "admin123",
       role: "admin"
     });
     console.log("👤 Usuario admin creado: admin@escapurbis.com / admin123");
@@ -92,6 +92,14 @@ const seed = async () => {
         $addToSet: { experiences: exp3._id }
       });
 
+      // Referencias en User
+      await User.findByIdAndUpdate(admin._id, {
+        $addToSet: {
+          places: { $each: [place1._id, place2._id] },
+          experiences: { $each: [exp1._id, exp2._id, exp3._id] }
+        }
+      });
+
       console.log("🌱 Lugares y experiencias creados por defecto");
     } else {
       const numPlacesRaw = await ask("¿Cuántos lugares quieres crear?: ");
@@ -115,7 +123,13 @@ const seed = async () => {
 
         for (let j = 0; j < numExperiences; j++) {
           const text = (await ask(` - Enunciado de la experiencia ${j + 1}: `)).trim();
-          const type = (await ask(` - Tipo (riddle/qr/gps/photo): `)).trim();
+          let type = (await ask(` - Tipo (riddle/qr/gps/photo): `)).trim().toLowerCase();
+
+          while (!ALLOWED_TYPES.includes(type)) {
+            console.log("⚠️ Tipo inválido. Usa: riddle | qr | gps | photo");
+            type = (await ask(` - Tipo (riddle/qr/gps/photo): `)).trim().toLowerCase();
+          }
+
           const solution = (await ask(` - Solución: `)).trim();
 
           const experience = await Experience.create({
@@ -130,6 +144,10 @@ const seed = async () => {
 
         await Place.findByIdAndUpdate(place._id, {
           $addToSet: { experiences: { $each: expIds } }
+        });
+
+        await User.findByIdAndUpdate(admin._id, {
+          $addToSet: { places: place._id, experiences: { $each: expIds } }
         });
 
         console.log(`✅ Lugar "${title}" creado con ${expIds.length} experiencias.`);

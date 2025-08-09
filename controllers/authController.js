@@ -16,43 +16,34 @@ const generateToken = (user) =>
     expiresIn: "7d",
   });
 
+// register: NO hashees aquí; deja que el modelo lo haga en pre('save')
 export const register = async (req, res) => {
   try {
     const { username, email, password } = req.body ?? {};
     if (!username || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: "username, email y password son obligatorios" });
+      return res.status(400).json({ message: "username, email y password son obligatorios" });
     }
 
     const normEmail = String(email).trim().toLowerCase();
     const normUsername = String(username).trim();
 
     if (normUsername.length < 2) {
-      return res
-        .status(400)
-        .json({ message: "El nombre de usuario es demasiado corto" });
+      return res.status(400).json({ message: "El nombre de usuario es demasiado corto" });
     }
     if (String(password).length < 6) {
-      return res
-        .status(400)
-        .json({ message: "La contraseña debe tener al menos 6 caracteres" });
+      return res.status(400).json({ message: "La contraseña debe tener al menos 6 caracteres" });
     }
 
-    const existing = await User.findOne({ email: normEmail });
+    // Comprobar también username para devolver 409 coherente
+    const existing = await User.findOne({ $or: [{ email: normEmail }, { username: normUsername }] });
     if (existing) {
-      return res.status(409).json({ message: "El email ya está registrado" });
+      return res.status(409).json({ message: "Email o username ya registrados" });
     }
 
-    // ✅ Opción A (recomendada): dejar que el modelo hashee en pre('save')
-    // const newUser = await User.create({ username: normUsername, email: normEmail, password, role: "user" });
-
-    // ✅ Opción B: hashear aquí (si tu modelo no lo hace)
-    const hashed = await bcrypt.hash(password, 10);
     const newUser = await User.create({
       username: normUsername,
       email: normEmail,
-      password: hashed,
+      password, // ← raw, lo hashea el pre('save') del modelo
       role: "user",
     });
 
@@ -63,38 +54,31 @@ export const register = async (req, res) => {
       token,
     });
   } catch (error) {
+    // Manejo elegante de duplicados únicos (por si se cuela)
+    if (error.code === 11000) {
+      return res.status(409).json({ message: "Email o username ya registrados" });
+    }
     console.error("Error en register:", error);
     return res.status(500).json({ message: "Error al registrar" });
   }
 };
 
+// login: seleccionar password y usar comparePassword del modelo
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body ?? {};
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "email y password son obligatorios" });
+      return res.status(400).json({ message: "email y password son obligatorios" });
     }
 
     const normEmail = String(email).trim().toLowerCase();
-    const user = await User.findOne({ email: normEmail });
+    const user = await User.findOne({ email: normEmail }).select("+password"); // <-- clave
 
-    // 🔒 Unifica respuesta para no revelar si el email existe
     const invalidMsg = "Credenciales inválidas";
+    if (!user) return res.status(401).json({ message: invalidMsg });
 
-    if (!user) {
-      return res.status(401).json({ message: invalidMsg });
-    }
-
-    // Si tu modelo tiene user.comparePassword, úsalo:
-    // const isMatch = await user.comparePassword(password);
-    // Si no, compara con bcrypt:
-    const isMatch = await bcrypt.compare(String(password), user.password);
-
-    if (!isMatch) {
-      return res.status(401).json({ message: invalidMsg });
-    }
+    const isMatch = await user.comparePassword(String(password)); // <-- usa método del modelo
+    if (!isMatch) return res.status(401).json({ message: invalidMsg });
 
     const token = generateToken(user);
     return res.json({
