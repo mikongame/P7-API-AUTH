@@ -5,10 +5,19 @@ import { Server } from "socket.io";
 import dotenv from "dotenv";
 import cors from "cors";
 
+import authRoutes from "./routes/auth.js";
+import userRoutes from "./routes/users.js";
+import placeRoutes from "./routes/places.js";
+import experienceRoutes from "./routes/experiences.js";
+
 dotenv.config();
 
 if (!process.env.MONGO_URI) {
   console.error("❌ Falta la variable MONGO_URI en el .env");
+  process.exit(1);
+}
+if (!process.env.JWT_SECRET) {
+  console.error("❌ Falta la variable JWT_SECRET en el .env");
   process.exit(1);
 }
 
@@ -24,17 +33,15 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("✅ Conectado a MongoDB Atlas"))
-  .catch((err) => {
+(async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("✅ Conectado a MongoDB Atlas");
+  } catch (err) {
     console.error("❌ Error de conexión a MongoDB:", err);
     process.exit(1);
-  });
-
-import authRoutes from "./routes/auth.js";
-import userRoutes from "./routes/users.js";
-import placeRoutes from "./routes/places.js";
-import experienceRoutes from "./routes/experiences.js";
+  }
+})();
 
 app.use("/auth", authRoutes);
 app.use("/users", userRoutes);

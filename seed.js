@@ -26,22 +26,16 @@ const seed = async () => {
     await Place.deleteMany();
     await User.deleteMany();
 
-    let admin = await User.findOne({ role: "admin" });
+    const adminPassword = await bcrypt.hash("admin123", 10);
+    const admin = await User.create({
+      username: "admin",
+      email: "admin@escapurbis.com",
+      password: adminPassword,
+      role: "admin"
+    });
+    console.log("👤 Usuario admin creado: admin@escapurbis.com / admin123");
 
-    if (admin) {
-      console.log("⚠️ Ya existe un administrador. No se creará otro.");
-    } else {
-      const adminPassword = await bcrypt.hash("admin123", 10);
-      admin = await User.create({
-        username: "admin",
-        email: "admin@escapurbis.com",
-        password: adminPassword,
-        role: "admin"
-      });
-      console.log("👤 Usuario admin creado: admin@escapurbis.com / admin123");
-    }
-
-    const useDefault = (await ask("¿Usar datos predefinidos? (s/n): ")).toLowerCase() === "s";
+    const useDefault = (await ask("¿Usar datos predefinidos? (s/n): ")).trim().toLowerCase() === "s";
 
     if (useDefault) {
       const place1 = await Place.create({
@@ -54,7 +48,7 @@ const seed = async () => {
       const place2 = await Place.create({
         title: "El Refugi 307",
         description: "Refugio antiaéreo de la Guerra Civil",
-        location: "Poble Sec",
+        location: "Poble Sec, Barcelona",
         createdBy: admin._id
       });
 
@@ -92,19 +86,19 @@ const seed = async () => {
       const numPlaces = parseInt(await ask("¿Cuántos lugares quieres crear?: "), 10);
 
       for (let i = 0; i < numPlaces; i++) {
-        const title = await ask(`Título del lugar ${i + 1}: `);
-        const description = await ask(`Descripción: `);
-        const location = await ask(`Ubicación: `);
+        const title = (await ask(`Título del lugar ${i + 1}: `)).trim();
+        const description = (await ask(`Descripción: `)).trim();
+        const location = (await ask(`Ubicación: `)).trim();
 
         const place = await Place.create({ title, description, location, createdBy: admin._id });
-
-        const numExperiences = parseInt(await ask(`¿Cuántas experiencias para "${title}"?: `), 10);
         const expIds = [];
 
+        const numExperiences = parseInt(await ask(`¿Cuántas experiencias para "${title}"?: `), 10);
+
         for (let j = 0; j < numExperiences; j++) {
-          const text = await ask(` - Enunciado de la experiencia ${j + 1}: `);
-          const type = await ask(` - Tipo (riddle/qr/gps/photo): `);
-          const solution = await ask(` - Solución: `);
+          const text = (await ask(` - Enunciado de la experiencia ${j + 1}: `)).trim();
+          const type = (await ask(` - Tipo (riddle/qr/gps/photo): `)).trim();
+          const solution = (await ask(` - Solución: `)).trim();
 
           const experience = await Experience.create({ text, type, solution, place: place._id });
           expIds.push(experience._id);
@@ -120,7 +114,7 @@ const seed = async () => {
 
     console.log("✅ Semilla finalizada");
     rl.close();
-    process.exit();
+    process.exit(0);
   } catch (error) {
     console.error("❌ Error al ejecutar semilla:", error);
     rl.close();
