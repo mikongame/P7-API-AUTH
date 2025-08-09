@@ -84,9 +84,9 @@ Incluye:
 ## Comandos
 
 ```bash
-npm install       # Instalar dependencias
-npm run dev       # Iniciar servidor con nodemon
-node seed.js      # Cargar semilla con admin + lugares y experiencias
+npm install
+npm run dev
+node seed.js
 ```
 
 ### Semilla (seed.js)
