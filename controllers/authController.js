@@ -5,7 +5,6 @@ import User from "../models/User.js";
 const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
-    // Validación en tiempo de ejecución, no al importar
     throw new Error("JWT_SECRET no está definido en variables de entorno");
   }
   return secret;
@@ -16,7 +15,6 @@ const generateToken = (user) =>
     expiresIn: "7d",
   });
 
-// register: NO hashees aquí; deja que el modelo lo haga en pre('save')
 export const register = async (req, res) => {
   try {
     const { username, email, password } = req.body ?? {};
@@ -34,7 +32,6 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: "La contraseña debe tener al menos 6 caracteres" });
     }
 
-    // Comprobar también username para devolver 409 coherente
     const existing = await User.findOne({ $or: [{ email: normEmail }, { username: normUsername }] });
     if (existing) {
       return res.status(409).json({ message: "Email o username ya registrados" });
@@ -43,7 +40,7 @@ export const register = async (req, res) => {
     const newUser = await User.create({
       username: normUsername,
       email: normEmail,
-      password, // ← raw, lo hashea el pre('save') del modelo
+      password,
       role: "user",
     });
 
@@ -54,7 +51,6 @@ export const register = async (req, res) => {
       token,
     });
   } catch (error) {
-    // Manejo elegante de duplicados únicos (por si se cuela)
     if (error.code === 11000) {
       return res.status(409).json({ message: "Email o username ya registrados" });
     }
@@ -63,7 +59,6 @@ export const register = async (req, res) => {
   }
 };
 
-// login: seleccionar password y usar comparePassword del modelo
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body ?? {};
@@ -72,12 +67,12 @@ export const login = async (req, res) => {
     }
 
     const normEmail = String(email).trim().toLowerCase();
-    const user = await User.findOne({ email: normEmail }).select("+password"); // <-- clave
+    const user = await User.findOne({ email: normEmail }).select("+password");
 
     const invalidMsg = "Credenciales inválidas";
     if (!user) return res.status(401).json({ message: invalidMsg });
 
-    const isMatch = await user.comparePassword(String(password)); // <-- usa método del modelo
+    const isMatch = await user.comparePassword(String(password));
     if (!isMatch) return res.status(401).json({ message: invalidMsg });
 
     const token = generateToken(user);

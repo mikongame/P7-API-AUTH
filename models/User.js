@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       minlength: 6,
-      select: false // 🔒 No devolver nunca la contraseña en queries por defecto
+      select: false
     },
     role: {
       type: String,
@@ -39,14 +39,13 @@ const userSchema = new mongoose.Schema(
       transform: (_doc, ret) => {
         ret.id = ret._id.toString();
         delete ret._id;
-        delete ret.password; // redundante pero protege en casos de `.lean()`
+        delete ret.password;
         return ret;
       }
     }
   }
 );
 
-// Hash de contraseña solo si se modifica
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   try {
@@ -58,7 +57,6 @@ userSchema.pre("save", async function (next) {
   }
 });
 
-// Comparar contraseña
 userSchema.methods.comparePassword = function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };

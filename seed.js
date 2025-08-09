@@ -16,7 +16,7 @@ const ask = (q) => new Promise((resolve) => rl.question(q, resolve));
 
 const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) {
-  console.error("❌ Falta MONGO_URI en .env");
+  console.error("Falta MONGO_URI en .env");
   process.exit(1);
 }
 
@@ -25,21 +25,19 @@ const ALLOWED_TYPES = ["riddle", "qr", "gps", "photo"];
 const seed = async () => {
   try {
     await mongoose.connect(MONGO_URI);
-    console.log("✅ Conectado a MongoDB para semilla");
+    console.log("Conectado a MongoDB para semilla");
 
-    // Limpieza
     await Experience.deleteMany();
     await Place.deleteMany();
     await User.deleteMany();
 
-    // Admin por defecto (contraseña en claro → la hashea el modelo en pre('save'))
     const admin = await User.create({
       username: "admin",
       email: "admin@escapurbis.com",
       password: "admin123",
       role: "admin"
     });
-    console.log("👤 Usuario admin creado: admin@escapurbis.com / admin123");
+    console.log("Usuario admin creado: admin@escapurbis.com / admin123");
 
     const useDefault = (await ask("¿Usar datos predefinidos? (s/n): "))
       .trim()
@@ -92,7 +90,6 @@ const seed = async () => {
         $addToSet: { experiences: exp3._id }
       });
 
-      // Referencias en User
       await User.findByIdAndUpdate(admin._id, {
         $addToSet: {
           places: { $each: [place1._id, place2._id] },
@@ -100,7 +97,7 @@ const seed = async () => {
         }
       });
 
-      console.log("🌱 Lugares y experiencias creados por defecto");
+      console.log("Lugares y experiencias creados por defecto");
     } else {
       const numPlacesRaw = await ask("¿Cuántos lugares quieres crear?: ");
       const numPlaces = Number.parseInt(numPlacesRaw, 10) || 0;
@@ -126,7 +123,7 @@ const seed = async () => {
           let type = (await ask(` - Tipo (riddle/qr/gps/photo): `)).trim().toLowerCase();
 
           while (!ALLOWED_TYPES.includes(type)) {
-            console.log("⚠️ Tipo inválido. Usa: riddle | qr | gps | photo");
+            console.log("Tipo inválido. Usa: riddle | qr | gps | photo");
             type = (await ask(` - Tipo (riddle/qr/gps/photo): `)).trim().toLowerCase();
           }
 
@@ -150,16 +147,16 @@ const seed = async () => {
           $addToSet: { places: place._id, experiences: { $each: expIds } }
         });
 
-        console.log(`✅ Lugar "${title}" creado con ${expIds.length} experiencias.`);
+        console.log(`Lugar "${title}" creado con ${expIds.length} experiencias.`);
       }
     }
 
-    console.log("✅ Semilla finalizada");
+    console.log("Semilla finalizada");
     rl.close();
     await mongoose.connection.close();
     process.exit(0);
   } catch (error) {
-    console.error("❌ Error al ejecutar semilla:", error);
+    console.error("Error al ejecutar semilla:", error);
     rl.close();
     await mongoose.connection.close();
     process.exit(1);

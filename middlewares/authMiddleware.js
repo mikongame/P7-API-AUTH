@@ -1,6 +1,5 @@
 import jwt from "jsonwebtoken";
 
-// Obtiene el secreto en tiempo de ejecución (no al importar)
 const getSecret = () => {
   const s = process.env.JWT_SECRET;
   if (!s) throw new Error("JWT_SECRET no está definido en variables de entorno");
@@ -8,12 +7,11 @@ const getSecret = () => {
 };
 
 export const verifyToken = (req, res, next) => {
-  const authHeader = req.get("authorization"); // headers case-insensitive
+  const authHeader = req.get("authorization");
   if (!authHeader) {
     return res.status(401).json({ message: "Token no proporcionado" });
   }
 
-  // Acepta “Bearer   <token>” con espacios extra y case-insensitive
   const match = authHeader.match(/^Bearer\s+(.+)$/i);
   if (!match) {
     return res.status(401).json({ message: "Formato de autorización inválido" });
@@ -22,7 +20,6 @@ export const verifyToken = (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, getSecret(), { algorithms: ["HS256"] });
-    // Aseguramos shape conocido
     req.user = { id: String(decoded.id), role: decoded.role };
     return next();
   } catch (err) {
@@ -49,7 +46,6 @@ export const authorizeRoles = (...roles) => (req, res, next) => {
   return next();
 };
 
-// Extra útil: admin o el propio usuario (para /users/:id)
 export const requireSelfOrAdmin = (param = "id") => (req, res, next) => {
   const targetId = req.params[param];
   if (!req.user) return res.status(401).json({ message: "No autenticado" });

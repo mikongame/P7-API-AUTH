@@ -16,7 +16,6 @@ const experienceSchema = new mongoose.Schema(
   }
 );
 
-// Índice compuesto eficaz para consultas por propietario y lugar
 experienceSchema.index({ createdBy: 1, place: 1 });
 
 export default mongoose.model("Experience", experienceSchema);
